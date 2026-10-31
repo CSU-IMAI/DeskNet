@@ -1,0 +1,35 @@
+{
+  "name": "desknest",
+  "private": true,
+  "version": "1.0.0",
+  "description": "DeskNest 桌面管家 — 文件与软件的统一收纳、搜索、启动与离线备份",
+  "type": "module",
+  "packageManager": "npm@11.17.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "check": "tsc --noEmit",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "desktop": "tauri dev",
+    "bundle:win": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-win.ps1",
+    "bundle:linux": "tauri build --bundles deb,appimage"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.12.4",
+    "@tauri-apps/plugin-dialog": "^2.8.4",
+    "fuse.js": "^7.5.0",
+    "lucide-react": "^1.66.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.12.4",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.5"
+  }
+}

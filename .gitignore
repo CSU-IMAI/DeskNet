@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.cache/
+.cargo-home/
+.pnpm-store/
+src-tauri/target/
+src-tauri/gen/
+.env
+.env.*
+!.env.example
+.test-data/
+*.log
+.DS_Store
+Thumbs.db
+artifacts/*.zip
+artifacts/screenshots/*.png
