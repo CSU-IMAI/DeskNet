@@ -15,6 +15,40 @@ const DESKTOP_SEARCH_WIDTH: f64 = 430.0;
 const DESKTOP_SEARCH_HEIGHT: f64 = 58.0;
 const MIN_ZONE_WIDTH: f64 = 0.12;
 const MIN_ZONE_HEIGHT: f64 = 0.14;
+const PARK_POSITION: f64 = -30000.0;
+
+fn zone_logical_position(
+    app: &AppHandle,
+    zone: &DesktopZone,
+) -> Result<(f64, f64), String> {
+    let monitor = primary_monitor(app)?;
+    let (left, top, width, height) = monitor_logical_size(&monitor);
+    let zone_width = (zone.width.clamp(MIN_ZONE_WIDTH, 0.92) * width).max(250.0);
+    let zone_height = (zone.height.clamp(MIN_ZONE_HEIGHT, 0.92) * height).max(160.0);
+    let zone_x = left + zone.x.clamp(0.0, 1.0) * width;
+    let zone_y = top + zone.y.clamp(0.0, 1.0) * height;
+    Ok((
+        zone_x.min(left + width - zone_width).max(left),
+        zone_y.min(top + height - zone_height).max(top),
+    ))
+}
+
+fn position_zone_window(
+    app: &AppHandle,
+    window: &WebviewWindow,
+    zone: &DesktopZone,
+) {
+    if let Ok((x, y)) = zone_logical_position(app, zone) {
+        let _ = window.set_position(tauri::LogicalPosition::new(x, y));
+    }
+}
+
+fn park_zone_window(window: &WebviewWindow) {
+    let _ = window.set_position(tauri::LogicalPosition::new(
+        PARK_POSITION,
+        PARK_POSITION,
+    ));
+}
 
 #[cfg(target_os = "windows")]
 fn wide(value: &str) -> Vec<u16> {
@@ -326,18 +360,16 @@ pub fn create_zone_window(app: &AppHandle, zone: &DesktopZone) -> Result<Webview
         return Ok(window);
     }
     let monitor = primary_monitor(app)?;
-    let (left, top, width, height) = monitor_logical_size(&monitor);
+    let (_, _, width, height) = monitor_logical_size(&monitor);
     let zone_width = (zone.width.clamp(MIN_ZONE_WIDTH, 0.92) * width).max(250.0);
     let zone_height = (zone.height.clamp(MIN_ZONE_HEIGHT, 0.92) * height).max(160.0);
-    let zone_x = left + zone.x.clamp(0.0, 1.0) * width;
-    let zone_y = top + zone.y.clamp(0.0, 1.0) * height;
 
     let builder = WebviewWindowBuilder::new(app, &label, WebviewUrl::App("index.html".into()))
         .title(&zone.name)
         .inner_size(zone_width, zone_height)
         .position(
-            zone_x.min(left + width - zone_width).max(left),
-            zone_y.min(top + height - zone_height).max(top),
+            PARK_POSITION,
+            PARK_POSITION,
         )
         .transparent(true)
         .decorations(false)
@@ -347,7 +379,7 @@ pub fn create_zone_window(app: &AppHandle, zone: &DesktopZone) -> Result<Webview
         .maximizable(false)
         .minimizable(false)
         .shadow(false)
-        .visible(false)
+        .visible(true)
         .focused(false);
     #[cfg(target_os = "windows")]
     let builder = builder.drag_and_drop(true);
@@ -360,7 +392,7 @@ pub fn create_zone_window(app: &AppHandle, zone: &DesktopZone) -> Result<Webview
 pub fn sync_zone_windows(
     app: &AppHandle,
     zones: &[DesktopZone],
-    visible: bool,
+    _visible: bool,
 ) -> Result<(), String> {
     let expected: Vec<String> = zones.iter().map(|zone| zone_label(&zone.id)).collect();
     let existing: Vec<String> = app
@@ -380,11 +412,6 @@ pub fn sync_zone_windows(
     for zone in zones {
         let window = create_zone_window(app, zone)?;
         let _ = window.set_title(&zone.name);
-        if visible {
-            let _ = window.show();
-        } else {
-            let _ = window.hide();
-        }
     }
     Ok(())
 }
@@ -453,14 +480,21 @@ pub fn apply_zones_visibility(app: &AppHandle, visible: bool) {
             let _ = window.hide();
         }
     }
-    for (label, window) in app.webview_windows() {
-        if label.starts_with("zone-") {
-            if visible {
-                let _ = window.show();
-                let _ = window.emit("zone-refresh", ());
-            } else {
-                let _ = window.hide();
-            }
+    let data = app.state::<AppData>();
+    let zones = data
+        .snapshot()
+        .map(|state| state.desktop.zones)
+        .unwrap_or_default();
+    for zone in &zones {
+        let Some(window) = app.get_webview_window(&zone_label(&zone.id)) else {
+            continue;
+        };
+        if visible {
+            position_zone_window(app, &window, zone);
+            let _ = window.show();
+            let _ = window.emit("zone-refresh", ());
+        } else {
+            park_zone_window(&window);
         }
     }
 }
@@ -563,10 +597,12 @@ pub fn save_desktop_settings(
     let data = app.state::<AppData>();
     let zones = validate_zones(&data, zones)?;
     let settings = data.mutate(|state| {
-        let (search_x, search_y, search_custom) = (
+        let (search_x, search_y, search_custom, zone_opacity, zone_layout_version) = (
             state.desktop.search_x,
             state.desktop.search_y,
             state.desktop.search_custom,
+            state.desktop.zone_opacity,
+            state.desktop.zone_layout_version,
         );
         state.desktop = DesktopSettings {
             zones,
@@ -574,6 +610,8 @@ pub fn save_desktop_settings(
             search_x,
             search_y,
             search_custom,
+            zone_opacity,
+            zone_layout_version,
         };
         Ok(state.desktop.clone())
     })?;
@@ -583,8 +621,20 @@ pub fn save_desktop_settings(
     Ok(settings)
 }
 
-pub fn update_search_position(app: &AppHandle, x: f64, y: f64) -> Result<(), String> {
+pub fn set_zone_opacity(
+    app: &AppHandle,
+    opacity: f64,
+) -> Result<DesktopSettings, String> {
     let data = app.state::<AppData>();
+    let settings = data.mutate(|state| {
+        state.desktop.zone_opacity = opacity.clamp(0.25, 0.95);
+        Ok(state.desktop.clone())
+    })?;
+    let _ = app.emit("desktop-settings-changed", &settings);
+    Ok(settings)
+}
+
+pub fn update_search_position(app: &AppHandle, x: f64, y: f64) -> Result<(), String> {    let data = app.state::<AppData>();
     data.mutate(|state| {
         state.desktop.search_x = x.clamp(0.0, 1.0);
         state.desktop.search_y = y.clamp(0.0, 1.0);

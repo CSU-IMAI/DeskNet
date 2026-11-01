@@ -29,6 +29,7 @@ interface SettingsModalProps {
   theme: Theme;
   onClose: () => void;
   onThemeChange: (theme: Theme) => void;
+  onZoneOpacityChange: (opacity: number) => void;
   onOpenFolder: (kind: "library" | "backups" | "data" | "shortcuts") => void;
   onOpenBackups: () => void;
   onImportDesktop: () => void;
@@ -47,6 +48,7 @@ export function SettingsModal({
   theme,
   onClose,
   onThemeChange,
+  onZoneOpacityChange,
   onOpenFolder,
   onOpenBackups,
   onImportDesktop,
@@ -191,6 +193,26 @@ export function SettingsModal({
               </small>
             </span>
           </button>
+        </div>
+        <div className="zone-opacity-setting">
+          <div>
+            <strong>分区统一透明度</strong>
+            <small>中心更通透，向四周平滑变实；数值越高，边缘越不透明。</small>
+          </div>
+          <div className="zone-opacity-control">
+            <input
+              type="range"
+              min={25}
+              max={95}
+              step={1}
+              value={Math.round((desktop.zoneOpacity || 0.78) * 100)}
+              onChange={(event) =>
+                onZoneOpacityChange(Number(event.target.value) / 100)
+              }
+              aria-label="桌面分区统一透明度"
+            />
+            <span>{Math.round((desktop.zoneOpacity || 0.78) * 100)}%</span>
+          </div>
         </div>
         <p className="settings-inline-note">
           分区里的文件或软件直接点击即可打开；拖动分区标题移动位置，拖动右下角调整大小。

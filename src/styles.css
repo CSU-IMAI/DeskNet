@@ -5195,3 +5195,109 @@ html[data-window^="zone-"] #root {
     0 20px 45px rgba(62, 48, 89, 0.18),
     inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
+
+.zone-widget {
+  --zone-alpha: 0.78;
+  background:
+    radial-gradient(
+      ellipse 88% 88% at 50% 46%,
+      rgba(255, 253, 248, calc(var(--zone-alpha) * 0.18)) 0%,
+      rgba(255, 253, 248, calc(var(--zone-alpha) * 0.3)) 40%,
+      rgba(255, 251, 244, calc(var(--zone-alpha) * 0.56)) 70%,
+      rgba(255, 248, 239, var(--zone-alpha)) 100%
+    ),
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, calc(var(--zone-alpha) * 0.24)) 0%,
+      rgba(255, 255, 255, 0.05) 42%,
+      rgba(188, 232, 255, calc(var(--zone-alpha) * 0.16)) 68%,
+      rgba(255, 222, 244, calc(var(--zone-alpha) * 0.18)) 100%
+    );
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  box-shadow:
+    0 24px 60px rgba(31, 27, 20, 0.2),
+    0 2px 6px rgba(31, 27, 20, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 0 34px rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(22px) saturate(1.32) brightness(1.03);
+  -webkit-backdrop-filter: blur(22px) saturate(1.32) brightness(1.03);
+}
+
+[data-theme="dark"] .zone-widget {
+  background:
+    radial-gradient(
+      ellipse 88% 88% at 50% 46%,
+      rgba(20, 27, 23, calc(var(--zone-alpha) * 0.2)) 0%,
+      rgba(20, 27, 23, calc(var(--zone-alpha) * 0.34)) 40%,
+      rgba(17, 24, 20, calc(var(--zone-alpha) * 0.62)) 70%,
+      rgba(15, 21, 18, var(--zone-alpha)) 100%
+    ),
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, calc(var(--zone-alpha) * 0.08)) 0%,
+      rgba(255, 255, 255, 0.01) 42%,
+      rgba(150, 214, 255, calc(var(--zone-alpha) * 0.06)) 68%,
+      rgba(255, 210, 245, calc(var(--zone-alpha) * 0.05)) 100%
+    );
+  border-color: rgba(255, 255, 255, 0.34);
+}
+
+.zone-opacity-setting {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--card);
+}
+
+.zone-opacity-setting strong {
+  display: block;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.zone-opacity-setting small {
+  display: block;
+  max-width: 430px;
+  margin-top: 3px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.zone-opacity-control {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.zone-opacity-control input[type="range"] {
+  width: 150px;
+  accent-color: var(--sage);
+}
+
+.zone-opacity-control span {
+  min-width: 42px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  text-align: right;
+}
+
+@media (max-width: 620px) {
+  .zone-opacity-setting {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .zone-opacity-control input[type="range"] {
+    flex: 1;
+    width: auto;
+  }
+}

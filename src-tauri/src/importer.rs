@@ -35,6 +35,18 @@ pub fn is_app_candidate(path: &Path) -> bool {
     }
 }
 
+pub fn classify_path(path: &Path) -> &'static str {
+    if !path.exists() {
+        "missing"
+    } else if is_app_candidate(path) {
+        "app"
+    } else if path.is_dir() {
+        "folder"
+    } else {
+        "file"
+    }
+}
+
 pub fn import_paths(
     data: &AppData,
     paths: Vec<String>,

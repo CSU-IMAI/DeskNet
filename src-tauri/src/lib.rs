@@ -162,6 +162,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::bootstrap,
             commands::refresh_items,
+            commands::classify_paths,
             commands::import_paths,
             commands::import_desktop_shortcuts,
             commands::open_item,
@@ -194,6 +195,7 @@ pub fn run() {
             commands::save_desktop_settings,
             commands::update_zone_bounds,
             commands::update_search_position,
+            commands::set_zone_opacity,
             commands::open_zones_manager,
             commands::get_vault_status,
             commands::configure_vault,

@@ -4,7 +4,7 @@ use crate::launcher;
 use crate::library;
 use crate::models::{
     AppState, BackupInfo, BackupManifest, BackupPackageInfo, Bootstrap, Category, DesktopSettings, DesktopZone,
-    ImportResult, Item, ItemKind, Settings, StorageInfo, VaultStatus,
+    DragPathInfo, ImportResult, Item, ItemKind, Settings, StorageInfo, VaultStatus,
 };
 use crate::store::AppData;
 use crate::util::{
@@ -62,6 +62,17 @@ pub fn refresh_items(app: AppHandle) -> Result<Vec<Item>, String> {
     let items = data.rebuild_items()?;
     let _ = app.emit("items-changed", ());
     Ok(items)
+}
+
+#[tauri::command]
+pub fn classify_paths(paths: Vec<String>) -> Vec<DragPathInfo> {
+    paths
+        .into_iter()
+        .map(|path| DragPathInfo {
+            kind: importer::classify_path(std::path::Path::new(&path)).to_string(),
+            path,
+        })
+        .collect()
 }
 
 #[tauri::command]
@@ -663,6 +674,14 @@ pub fn update_search_position(
     y: f64,
 ) -> Result<(), String> {
     crate::desktop::update_search_position(&app, x, y)
+}
+
+#[tauri::command]
+pub fn set_zone_opacity(
+    app: AppHandle,
+    opacity: f64,
+) -> Result<DesktopSettings, String> {
+    crate::desktop::set_zone_opacity(&app, opacity)
 }
 
 #[tauri::command]

@@ -12,8 +12,8 @@ DeskNest 是一个把桌面文件、文件夹和软件快捷方式收进统一�
 
 | 文件 | 大小 | SHA-256 |
 | --- | ---: | --- |
-| `DeskNest_1.0.0_x64-setup.exe` | 1,745,910 字节 | `4FC1BFDEB64933B9F94074D143CA21056821F7A4DDDB9057C1F980938BB48B23` |
-| `DeskNest-win-x64-portable.zip` | 2,132,478 字节 | `D2E57CD1208570572F7EA4EBA4B9E0AFD01B7B9B11FE9AAFDB9D7316DC01C3C8` |
+| `DeskNest_1.0.0_x64-setup.exe` | 1,748,795 字节 | `99FFD42680553F2BF10C33C0506DB79707D088A2D6A19F5F3623014A0824EE0D` |
+| `DeskNest-win-x64-portable.zip` | 2,136,310 字节 | `B564F30AD038DF9D24819259429D9F6A53DA409EAAC1C034A29AC15987BFE909` |
 
 - 安装版：运行 `DeskNest_1.0.0_x64-setup.exe`。
 - 便携版：解压后直接运行 `DeskNest.exe`，同目录需保留 `WebView2Loader.dll`。
@@ -31,6 +31,11 @@ DeskNest 是一个把桌面文件、文件夹和软件快捷方式收进统一�
 - 胶囊与完整搜索互斥：完整搜索打开时胶囊隐藏，关闭后自动恢复，不再出现两个搜索框。
 - 完整搜索默认在屏幕顶部居中，可拖动并记忆位置；旧默认位置会自动迁移到顶部。
 - 分区位于 Explorer 桌面图标之上、普通应用之下，可正常点击和接收文件拖放。
+- 分区外壳改为**正中心通透、向四周平滑变实**的径向透明度；边缘更不透明，文字和图标更清楚。
+- 默认分区面积增大到宽 30%、高 38%；旧版默认尺寸的布局升级时会自动放大一次。
+- 设置 →「桌面工具」新增「分区统一透明度」滑杆（25%–95%），同时作用于程序区、文件区和加密区，实时更新并持久化。
+- 分区窗口启动时以可见但屏幕外的方式创建，让 WebView2 先注册原生拖放目标，再移动到桌面位置，避免拖拽时出现拒绝标志。
+- 拖入按区域类型过滤：程序区只收软件快捷方式，文件区只收文件和文件夹，加密区只收文件和文件夹，「全部项目」区三者都收。
 - 分区边界不能重叠：拖动/缩放冲突会退回原位，后端每 450ms 再校验一次。
 - 分区位置、大小、显示状态和搜索条位置自动持久化，重启恢复。
 - 桌面模式、关闭主窗口收进托盘、`Ctrl + Shift + M` 唤回主界面。
@@ -146,8 +151,8 @@ Get-FileHash .\DeskNest-win-x64-portable.zip -Algorithm SHA256
 期望值：
 
 ```text
-4FC1BFDEB64933B9F94074D143CA21056821F7A4DDDB9057C1F980938BB48B23  DeskNest_1.0.0_x64-setup.exe
-D2E57CD1208570572F7EA4EBA4B9E0AFD01B7B9B11FE9AAFDB9D7316DC01C3C8  DeskNest-win-x64-portable.zip
+99FFD42680553F2BF10C33C0506DB79707D088A2D6A19F5F3623014A0824EE0D  DeskNest_1.0.0_x64-setup.exe
+B564F30AD038DF9D24819259429D9F6A53DA409EAAC1C034A29AC15987BFE909  DeskNest-win-x64-portable.zip
 ```
 
 ---

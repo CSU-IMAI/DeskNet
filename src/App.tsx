@@ -167,6 +167,7 @@ export default function App() {
     searchX: -1,
     searchY: -1,
     searchCustom: false,
+    zoneOpacity: 0.78,
   });
   const [storage, setStorage] = useState<StorageInfo | null>(null);
   const [version, setVersion] = useState("1.0.0");
@@ -1173,6 +1174,23 @@ export default function App() {
     [notify],
   );
 
+  const handleZoneOpacityChange = useCallback(
+    async (opacity: number) => {
+      setDesktop((current) => ({ ...current, zoneOpacity: opacity }));
+      try {
+        const next = await api.setZoneOpacity(opacity);
+        setDesktop(next);
+      } catch (reason) {
+        notify(
+          "error",
+          "无法保存分区透明度",
+          reason instanceof Error ? reason.message : String(reason),
+        );
+      }
+    },
+    [notify],
+  );
+
   if (loading && !initialized) {
     return (
       <div className="boot-screen">
@@ -1503,6 +1521,7 @@ export default function App() {
           theme={theme}
           onClose={() => setSettingsOpen(false)}
           onThemeChange={setTheme}
+          onZoneOpacityChange={handleZoneOpacityChange}
           onOpenFolder={(kind) => void openFolder(kind)}
           onOpenBackups={() => {
             setSettingsOpen(false);

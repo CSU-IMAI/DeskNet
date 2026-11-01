@@ -8,6 +8,7 @@ import type {
   Category,
   DesktopSettings,
   DesktopZone,
+  DragPathInfo,
   ImportResult,
   Item,
   Settings,
@@ -156,6 +157,7 @@ let demoStore = {
     searchX: -1,
     searchY: -1,
     searchCustom: false,
+    zoneOpacity: 0.78,
     zones: [
       {
         id: "zone-programs",
@@ -280,6 +282,14 @@ const demoApi = {
       skipped: paths.map((path) => `${path}（浏览器预览模式不会复制文件）`),
       errors: [],
     };
+  },
+  async classifyPaths(paths: string[]): Promise<DragPathInfo[]> {
+    return paths.map((path) => ({
+      path,
+      kind: /\.(exe|lnk|url|desktop|appimage)$/i.test(path)
+        ? ("app" as const)
+        : ("file" as const),
+    }));
   },
   async importDesktopShortcuts(): Promise<ImportResult> {
     return {
@@ -449,6 +459,10 @@ const demoApi = {
     demoStore.desktop.searchX = x;
     demoStore.desktop.searchY = y;
   },
+  async setZoneOpacity(opacity: number): Promise<DesktopSettings> {
+    demoStore.desktop.zoneOpacity = opacity;
+    return clone(demoStore.desktop);
+  },
   async updateZoneBounds(
     id: string,
     x: number,
@@ -544,6 +558,10 @@ export const api = {
     isDesktopRuntime
       ? call<ImportResult>("import_paths", { paths, categoryId: categoryId ?? null })
       : demoApi.importPaths(paths),
+  classifyPaths: (paths: string[]): Promise<DragPathInfo[]> =>
+    isDesktopRuntime
+      ? call<DragPathInfo[]>("classify_paths", { paths })
+      : demoApi.classifyPaths(paths),
   importDesktopShortcuts: (): Promise<ImportResult> =>
     isDesktopRuntime
       ? call<ImportResult>("import_desktop_shortcuts")
@@ -672,6 +690,10 @@ export const api = {
     isDesktopRuntime
       ? call<void>("update_search_position", { x, y })
       : demoApi.updateSearchPosition(x, y),
+  setZoneOpacity: (opacity: number): Promise<DesktopSettings> =>
+    isDesktopRuntime
+      ? call<DesktopSettings>("set_zone_opacity", { opacity })
+      : demoApi.setZoneOpacity(opacity),
   openZonesManager: (): Promise<void> =>
     isDesktopRuntime
       ? call<void>("open_zones_manager")

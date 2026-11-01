@@ -20,6 +20,21 @@ pub struct AppData {
     pub backup_changed_at: Mutex<i64>,
 }
 
+fn migrate_zone_layout(state: &mut crate::models::AppState) {
+    if state.desktop.zone_layout_version >= 1 {
+        return;
+    }
+    for zone in &mut state.desktop.zones {
+        if (zone.width - 0.28).abs() < 0.002
+            && (zone.height - 0.34).abs() < 0.002
+        {
+            zone.width = 0.30;
+            zone.height = 0.38;
+        }
+    }
+    state.desktop.zone_layout_version = 1;
+}
+
 impl AppData {
     pub fn init(root: PathBuf) -> Result<Self, String> {
         fs::create_dir_all(&root).map_err(|error| {
@@ -42,6 +57,8 @@ impl AppData {
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => AppState::default(),
             Err(error) => return Err(format!("无法读取状态文件：{error}")),
         };
+        let mut state = state;
+        migrate_zone_layout(&mut state);
 
         let library = state
             .library_path
@@ -82,8 +99,7 @@ impl AppData {
         Ok(data)
     }
 
-    pub fn snapshot(&self) -> Result<AppState, String> {
-        self.state
+    pub fn snapshot(&self) -> Result<AppState, String> {        self.state
             .lock()
             .map(|state| state.clone())
             .map_err(|_| "状态锁已损坏，请重启应用".to_string())

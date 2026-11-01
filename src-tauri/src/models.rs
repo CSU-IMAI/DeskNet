@@ -158,6 +158,14 @@ pub struct DesktopSettings {
     pub search_x: f64,
     pub search_y: f64,
     pub search_custom: bool,
+    #[serde(default = "default_zone_opacity")]
+    pub zone_opacity: f64,
+    #[serde(default)]
+    pub zone_layout_version: u32,
+}
+
+fn default_zone_opacity() -> f64 {
+    0.78
 }
 
 impl Default for DesktopSettings {
@@ -171,9 +179,9 @@ impl Default for DesktopSettings {
                     filter: "apps".to_string(),
                     category_id: None,
                     x: 0.055,
-                    y: 0.18,
-                    width: 0.28,
-                    height: 0.34,
+                    y: 0.16,
+                    width: 0.30,
+                    height: 0.38,
                     created_at: 0,
                 },
                 DesktopZone {
@@ -183,9 +191,9 @@ impl Default for DesktopSettings {
                     filter: "files".to_string(),
                     category_id: None,
                     x: 0.365,
-                    y: 0.18,
-                    width: 0.28,
-                    height: 0.34,
+                    y: 0.16,
+                    width: 0.30,
+                    height: 0.38,
                     created_at: 0,
                 },
                 DesktopZone {
@@ -195,9 +203,9 @@ impl Default for DesktopSettings {
                     filter: "encrypted".to_string(),
                     category_id: None,
                     x: 0.675,
-                    y: 0.18,
-                    width: 0.28,
-                    height: 0.34,
+                    y: 0.16,
+                    width: 0.30,
+                    height: 0.38,
                     created_at: 0,
                 },
             ],
@@ -205,6 +213,8 @@ impl Default for DesktopSettings {
             search_x: -1.0,
             search_y: -1.0,
             search_custom: false,
+            zone_opacity: default_zone_opacity(),
+            zone_layout_version: 1,
         }
     }
 }
@@ -295,6 +305,13 @@ pub struct BackupPackageInfo {
     pub size: u64,
     pub created_at: u64,
     pub included_backups: usize,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DragPathInfo {
+    pub path: String,
+    pub kind: String,
 }
 
 #[derive(Debug, Clone, Serialize)]

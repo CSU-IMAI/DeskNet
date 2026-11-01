@@ -16,7 +16,7 @@ import {
   useRef,
   useState,
 } from "react";
-import type { FormEvent, PointerEvent } from "react";
+import type { CSSProperties, FormEvent, PointerEvent } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
 import {
@@ -45,6 +45,7 @@ export function ZoneWidget() {
   const [resizing, setResizing] = useState(false);
   const [vaultConfigured, setVaultConfigured] = useState(false);
   const [vaultUnlocked, setVaultUnlocked] = useState(false);
+  const [zoneOpacity, setZoneOpacity] = useState(0.78);
   const [password, setPassword] = useState("");
   const [unlocking, setUnlocking] = useState(false);
   const [unlockError, setUnlockError] = useState("");
@@ -68,6 +69,7 @@ export function ZoneWidget() {
       }
       setZone(found);
       setZones(bootstrap.desktop.zones);
+      setZoneOpacity(bootstrap.desktop.zoneOpacity || 0.78);
       validBounds.current = {
         x: found.x,
         y: found.y,
@@ -131,6 +133,9 @@ export function ZoneWidget() {
       currentMonitor(),
     ]);
     if (!monitor) return;
+    if (position.x < -10000 || position.y < -10000) {
+      return;
+    }
     const width = monitor.size.width;
     const height = monitor.size.height;
     const next = {
@@ -224,6 +229,75 @@ export function ZoneWidget() {
     return () => window.clearInterval(timer);
   }, [appWindow, saveBounds]);
 
+  const importPathsForZone = useCallback(
+    async (paths: string[]) => {
+      if (!zone || paths.length === 0) return;
+      if (zone.filter === "encrypted" && !vaultUnlocked) {
+        setToast("请先输入密码解锁加密区");
+        window.setTimeout(() => setToast(""), 3200);
+        return;
+      }
+      const acceptedKinds =
+        zone.filter === "apps"
+          ? ["app"]
+          : zone.filter === "files" || zone.filter === "encrypted"
+            ? ["file", "folder"]
+            : ["file", "folder", "app"];
+      const classified = await api.classifyPaths(paths);
+      const accepted = classified.filter((entry) =>
+        acceptedKinds.includes(entry.kind),
+      );
+      const rejected = classified.length - accepted.length;
+      if (accepted.length === 0) {
+        const message =
+          zone.filter === "apps"
+            ? "程序区只接收 .exe / .lnk / .url 等软件快捷方式"
+            : zone.filter === "files"
+              ? "文件区只接收文件和文件夹，软件请拖到程序区"
+              : zone.filter === "encrypted"
+                ? "加密区只接收文件和文件夹"
+                : "没有可导入的项目";
+        setToast(message);
+        window.setTimeout(() => setToast(""), 3200);
+        return;
+      }
+
+      try {
+        const result = await api.importPaths(
+          accepted.map((entry) => entry.path),
+          zone.categoryId ?? undefined,
+        );
+        if (zone.filter === "encrypted") {
+          for (const imported of result.imported) {
+            if (imported.kind !== "app") {
+              try {
+                await api.encryptItem(imported.id);
+              } catch (error) {
+                await api.deleteItem(imported.id).catch(() => undefined);
+                throw error;
+              }
+            }
+          }
+        }
+        const suffix =
+          rejected > 0 ? `，忽略 ${rejected} 个不支持的项目` : "";
+        setToast(
+          result.imported.length > 0
+            ? `已导入 ${result.imported.length} 个项目${
+                zone.filter === "encrypted" ? "并加密" : ""
+              }${suffix}`
+            : result.errors[0] ?? result.skipped[0] ?? "没有可导入的项目",
+        );
+        await load();
+        window.setTimeout(() => setToast(""), 3600);
+      } catch (reason) {
+        setToast(reason instanceof Error ? reason.message : String(reason));
+        window.setTimeout(() => setToast(""), 3600);
+      }
+    },
+    [load, vaultUnlocked, zone],
+  );
+
   useEffect(() => {
     let unlisten: (() => void) | undefined;
     void (async () => {
@@ -248,31 +322,10 @@ export function ZoneWidget() {
             }
             void (async () => {
               try {
-                const result = await api.importPaths(
-                  payload.paths,
-                  zone?.categoryId ?? undefined,
-                );
-                if (zone?.filter === "encrypted") {
-                  for (const imported of result.imported) {
-                    if (imported.kind !== "app") {
-                      try {
-                        await api.encryptItem(imported.id);
-                      } catch (error) {
-                        await api.deleteItem(imported.id).catch(() => undefined);
-                        throw error;
-                      }
-                    }
-                  }
-                }
-                setToast(
-                  result.imported.length > 0
-                    ? `已导入 ${result.imported.length} 个项目${zone?.filter === "encrypted" ? "并加密" : ""}`
-                    : result.errors[0] ?? "没有可导入的项目",
-                );
-                await load();
-                window.setTimeout(() => setToast(""), 3200);
+                await importPathsForZone(payload.paths);
               } catch (reason) {
                 setToast(reason instanceof Error ? reason.message : String(reason));
+                window.setTimeout(() => setToast(""), 3200);
               }
             })();
             return;
@@ -284,7 +337,7 @@ export function ZoneWidget() {
       }
     })();
     return () => unlisten?.();
-  }, [load, vaultUnlocked, zone?.categoryId, zone?.filter]);
+  }, [importPathsForZone]);
 
   const visibleItems = useMemo(() => {
     if (!zone) return [];
@@ -329,47 +382,24 @@ export function ZoneWidget() {
 
   const addFiles = async () => {
     if (!zone) return;
-    if (zone.filter === "encrypted" && !vaultUnlocked) {
-      setToast("请先输入密码解锁加密区");
-      window.setTimeout(() => setToast(""), 3200);
-      return;
-    }
     const selected = await open({
       multiple: true,
       directory: false,
       title: `选择要放入「${zone.name}」的文件`,
+      filters:
+        zone.filter === "apps"
+          ? [
+              {
+                name: "软件快捷方式",
+                extensions: ["exe", "lnk", "url", "desktop", "appimage"],
+              },
+            ]
+          : undefined,
     });
     if (!selected) return;
     const paths = Array.isArray(selected) ? selected : [selected];
     if (paths.length === 0) return;
-    try {
-      const result = await api.importPaths(
-        paths,
-        zone.categoryId ?? undefined,
-      );
-      if (zone.filter === "encrypted") {
-        for (const imported of result.imported) {
-          if (imported.kind !== "app") {
-            try {
-              await api.encryptItem(imported.id);
-            } catch (error) {
-              await api.deleteItem(imported.id).catch(() => undefined);
-              throw error;
-            }
-          }
-        }
-      }
-      setToast(
-        result.imported.length > 0
-          ? `已添加 ${result.imported.length} 个项目${zone.filter === "encrypted" ? "并加密" : ""}`
-          : result.errors[0] ?? result.skipped[0] ?? "没有可添加的项目",
-      );
-      await load();
-      window.setTimeout(() => setToast(""), 3200);
-    } catch (reason) {
-      setToast(reason instanceof Error ? reason.message : String(reason));
-      window.setTimeout(() => setToast(""), 3200);
-    }
+    await importPathsForZone(paths);
   };
 
   const openItem = async (item: Item) => {
@@ -430,7 +460,12 @@ export function ZoneWidget() {
       className={`zone-widget ${dropActive ? "drop-active" : ""} ${
         locked ? "zone-locked-shell" : ""
       }`}
-      style={{ borderColor: withAlpha(zone.color, 0.36) }}
+      style={
+        {
+          borderColor: withAlpha(zone.color, 0.55),
+          "--zone-alpha": zoneOpacity,
+        } as CSSProperties
+      }
     >
       <header className="zone-header">
         <span
@@ -631,9 +666,13 @@ export function ZoneWidget() {
         <div className="zone-drop">
           <strong>松开导入到「{zone.name}」</strong>
           <span>
-            {zone.filter === "encrypted"
-              ? "导入后会自动分块加密"
-              : "文件会保存到资料库，快捷方式会建立软件映射"}
+            {zone.filter === "apps"
+              ? "只接受 .exe / .lnk / .url 等软件快捷方式"
+              : zone.filter === "files"
+                ? "接受文件和文件夹；软件请拖到程序区"
+                : zone.filter === "encrypted"
+                  ? "接受文件和文件夹，导入后自动加密"
+                  : "接受文件、文件夹和软件快捷方式"}
           </span>
         </div>
       )}

@@ -80,6 +80,7 @@ export interface DesktopSettings {
   searchX: number;
   searchY: number;
   searchCustom: boolean;
+  zoneOpacity: number;
 }
 
 export interface StorageInfo {
@@ -125,6 +126,13 @@ export interface BackupInfo {
   size: number;
   createdAt: number;
   kind: "manual" | "auto" | "pre-restore";
+}
+
+export type DragPathKind = "file" | "folder" | "app" | "missing";
+
+export interface DragPathInfo {
+  path: string;
+  kind: DragPathKind;
 }
 
 export type ViewKind =
