@@ -1,0 +1,12 @@
+﻿{
+    "name":  "DeskNest 1.0.0 — 分区透明度与备份还原修复",
+    "prerelease":  false,
+    "assets":  [
+                   "DeskNest_1.0.0_x64-setup.exe",
+                   "DeskNest-win-x64-portable.zip",
+                   "SHA256SUMS.txt"
+               ],
+    "tag_name":  "v1.0.0",
+    "body_file":  "RELEASE_NOTES.md",
+    "draft":  true
+}

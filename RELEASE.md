@@ -12,8 +12,8 @@ DeskNest 是一个把桌面文件、文件夹和软件快捷方式收进统一�
 
 | 文件 | 大小 | SHA-256 |
 | --- | ---: | --- |
-| `DeskNest_1.0.0_x64-setup.exe` | 1,748,795 字节 | `99FFD42680553F2BF10C33C0506DB79707D088A2D6A19F5F3623014A0824EE0D` |
-| `DeskNest-win-x64-portable.zip` | 2,136,310 字节 | `B564F30AD038DF9D24819259429D9F6A53DA409EAAC1C034A29AC15987BFE909` |
+| `DeskNest_1.0.0_x64-setup.exe` | 1,750,547 字节 | `58CEDD1C8C7BD63F13969C9831E668598857703FC784B57D3A2BBE66DC8C459C` |
+| `DeskNest-win-x64-portable.zip` | 2,137,364 字节 | `F5D0FC74F47103DE1918400F1B02E6FC3652D634CBED4F48F7339737725C0CEE` |
 
 - 安装版：运行 `DeskNest_1.0.0_x64-setup.exe`。
 - 便携版：解压后直接运行 `DeskNest.exe`，同目录需保留 `WebView2Loader.dll`。
@@ -64,6 +64,13 @@ DeskNest 是一个把桌面文件、文件夹和软件快捷方式收进统一�
 - 手动按钮改名为「立即完整备份」，立即生成一份 `manual` 类型 ZIP。
 - 备份面板会列出**已备份文件**和**未备份文件**。
 - 自动备份按保留数量轮换，手动备份不会被自动清理。
+
+### 跨盘备份还原
+
+- 备份中的 `state.json` 不再固定写入资料库和备份目录的绝对路径。
+- 还原以当前程序数据目录重新绑定资料库、备份目录，不再依赖备份时的 C 盘路径。
+- 程序数据在 C 盘、资料库在 E 盘时，目录替换自动使用复制回退，避免跨卷 `rename` 失败。
+- 旧备份中的绝对路径会重定位到当前资料库、备份和快捷方式目录。
 
 ### 加密备份包
 
@@ -151,8 +158,8 @@ Get-FileHash .\DeskNest-win-x64-portable.zip -Algorithm SHA256
 期望值：
 
 ```text
-99FFD42680553F2BF10C33C0506DB79707D088A2D6A19F5F3623014A0824EE0D  DeskNest_1.0.0_x64-setup.exe
-B564F30AD038DF9D24819259429D9F6A53DA409EAAC1C034A29AC15987BFE909  DeskNest-win-x64-portable.zip
+58CEDD1C8C7BD63F13969C9831E668598857703FC784B57D3A2BBE66DC8C459C  DeskNest_1.0.0_x64-setup.exe
+F5D0FC74F47103DE1918400F1B02E6FC3652D634CBED4F48F7339737725C0CEE  DeskNest-win-x64-portable.zip
 ```
 
 ---

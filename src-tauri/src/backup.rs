@@ -84,7 +84,10 @@ fn write_archive(data: &AppData, state: &AppState, path: &Path) -> Result<(), St
         .write_all(&manifest)
         .map_err(|error| format!("无法写入备份清单：{error}"))?;
 
-    let state_json = serde_json::to_vec_pretty(state)
+    let mut portable = state.clone();
+    portable.library_path = None;
+    portable.backup_path = None;
+    let state_json = serde_json::to_vec_pretty(&portable)
         .map_err(|error| format!("无法序列化状态：{error}"))?;
     writer
         .start_file("state.json", options)
@@ -528,7 +531,7 @@ pub fn restore_backup(data: &AppData, path: &str) -> Result<(), String> {
             return Err(format!("备份中缺少 state.json：{error}"));
         }
     };
-    let restored: AppState = match serde_json::from_slice(&state_bytes) {
+    let mut restored: AppState = match serde_json::from_slice(&state_bytes) {
         Ok(state) => state,
         Err(error) => {
             let _ = fs::remove_dir_all(&temp);
@@ -555,7 +558,12 @@ pub fn restore_backup(data: &AppData, path: &str) -> Result<(), String> {
             .state
             .lock()
             .map_err(|_| "状态锁已损坏，请重启应用".to_string())?;
-        let mut restored = restored;
+        rebase_restored_paths(
+            &mut restored,
+            &data.library,
+            &data.backups,
+            &data.shortcuts,
+        );
         restored.library_path = Some(path_string(&data.library));
         restored.backup_path = Some(path_string(&data.backups));
         *guard = restored;
@@ -676,13 +684,93 @@ fn replace_directory(source: &Path, target: &Path) -> Result<(), String> {
             let _ = fs::remove_dir_all(&backup);
             Ok(())
         }
-        Err(error) => {
-            if had_target {
-                let _ = fs::rename(&backup, target);
+        Err(rename_error) => {
+            // `std::fs::rename` cannot move a directory across volumes
+            // (for example library on E: while the temporary restore folder
+            // lives under the app data directory on C:). Copy recursively as
+            // a fallback so restore is independent of drive letters.
+            if let Err(copy_error) = copy_directory(source, target) {
+                if target.exists() {
+                    let _ = fs::remove_dir_all(target);
+                }
+                if had_target {
+                    let _ = fs::rename(&backup, target);
+                }
+                return Err(format!(
+                    "替换数据目录失败：{rename_error}；跨盘复制失败：{copy_error}"
+                ));
             }
-            Err(format!("替换数据目录失败：{error}"))
+            let _ = fs::remove_dir_all(source);
+            let _ = fs::remove_dir_all(&backup);
+            Ok(())
         }
     }
+}
+
+fn rebase_restored_paths(
+    restored: &mut AppState,
+    new_library: &Path,
+    new_backup: &Path,
+    new_shortcuts: &Path,
+) {
+    let old_library = restored.library_path.as_deref().map(PathBuf::from);
+    let old_backup = restored.backup_path.as_deref().map(PathBuf::from);
+    let old_shortcuts = old_library
+        .as_ref()
+        .and_then(|path| path.parent())
+        .map(|path| path.join("shortcuts"));
+
+    let rebase = |value: &str, old: Option<&Path>, new: &Path| -> String {
+        let Some(old) = old else {
+            return value.to_string();
+        };
+        let path = Path::new(value);
+        if let Ok(relative) = path.strip_prefix(old) {
+            if !relative.as_os_str().is_empty() {
+                return path_string(&new.join(relative));
+            }
+        }
+        value.to_string()
+    };
+
+    for app in &mut restored.apps {
+        app.target = rebase(&app.target, old_library.as_deref(), new_library);
+        app.target = rebase(&app.target, old_backup.as_deref(), new_backup);
+        app.target = rebase(&app.target, old_shortcuts.as_deref(), new_shortcuts);
+        if let Some(working_dir) = app.working_dir.as_mut() {
+            *working_dir = rebase(working_dir, old_library.as_deref(), new_library);
+            *working_dir = rebase(working_dir, old_backup.as_deref(), new_backup);
+            *working_dir = rebase(working_dir, old_shortcuts.as_deref(), new_shortcuts);
+        }
+        if let Some(original_path) = app.original_path.as_mut() {
+            *original_path = rebase(original_path, old_library.as_deref(), new_library);
+            *original_path = rebase(original_path, old_backup.as_deref(), new_backup);
+            *original_path = rebase(original_path, old_shortcuts.as_deref(), new_shortcuts);
+        }
+    }
+}
+
+fn copy_directory(source: &Path, target: &Path) -> Result<(), String> {    fs::create_dir_all(target)
+        .map_err(|error| format!("无法创建目标目录 {}：{error}", target.display()))?;
+    for entry in fs::read_dir(source)
+        .map_err(|error| format!("无法读取恢复目录 {}：{error}", source.display()))?
+    {
+        let entry = entry.map_err(|error| format!("无法读取恢复条目：{error}"))?;
+        let source_path = entry.path();
+        let target_path = target.join(entry.file_name());
+        if source_path.is_dir() {
+            copy_directory(&source_path, &target_path)?;
+        } else {
+            fs::copy(&source_path, &target_path).map_err(|error| {
+                format!(
+                    "无法复制 {} 到 {}：{error}",
+                    source_path.display(),
+                    target_path.display()
+                )
+            })?;
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]
