@@ -1,3 +1,4 @@
+mod autostart;
 mod backup;
 mod commands;
 mod desktop;
@@ -9,6 +10,7 @@ mod models;
 mod store;
 mod util;
 mod vault;
+mod watcher;
 
 use store::AppData;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -64,6 +66,17 @@ pub fn run() {
             let data = AppData::init(root.clone()).map_err(std::io::Error::other)?;
             app.manage(data);
 
+            let auto_start = app
+                .state::<AppData>()
+                .snapshot()
+                .map(|state| state.settings.auto_start)
+                .unwrap_or(false);
+            if auto_start {
+                if let Err(error) = autostart::set_enabled(true) {
+                    eprintln!("DeskNest: 无法刷新开机自启动路径：{error}");
+                }
+            }
+
             WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
                 .title("DeskNest 桌面管家")
                 .inner_size(1380.0, 880.0)
@@ -78,6 +91,7 @@ pub fn run() {
             desktop::start_lock_watcher(app.handle().clone());
             desktop::start_zone_overlap_watcher(app.handle().clone());
             backup::start_backup_scheduler(app.handle().clone());
+            watcher::start_library_watcher(app.handle().clone());
 
             let tray_result = (|| -> tauri::Result<()> {
                 let show_item =
@@ -125,6 +139,12 @@ pub fn run() {
             })();
             if let Err(error) = tray_result {
                 eprintln!("DeskNest: 无法创建系统托盘：{error}");
+            }
+
+            if std::env::args().any(|arg| arg == "--autostart") {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.hide();
+                }
             }
 
             if let Err(error) = app.global_shortcut().on_shortcut(
@@ -176,6 +196,7 @@ pub fn run() {
             commands::update_category,
             commands::delete_category,
             commands::update_settings,
+            commands::set_auto_start,
             commands::list_backups,
             commands::backup_manifest,
             commands::export_backup_package,
@@ -207,9 +228,15 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("DeskNest 主程序启动失败");
 
-    app.run(|app_handle, event| {
-        if matches!(event, tauri::RunEvent::Exit) {
+    app.run(|app_handle, event| match event {
+        tauri::RunEvent::ExitRequested { api, .. }
+            if !QUITTING.load(Ordering::SeqCst) =>
+        {
+            api.prevent_exit();
+        }
+        tauri::RunEvent::Exit => {
             desktop::save_all_layout(app_handle);
         }
+        _ => {}
     });
 }

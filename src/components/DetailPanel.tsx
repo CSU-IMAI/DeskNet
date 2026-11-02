@@ -199,6 +199,36 @@ export function DetailPanel({
           </div>
         </section>
 
+        {item.kind === "folder" && item.contents.length > 0 && (
+          <section className="detail-section">
+            <div className="detail-section-head">
+              <h3>文件夹内容</h3>
+              <span className="folder-content-count">
+                {item.contentCount} 个文件
+              </span>
+            </div>
+            <ul className="folder-content-list">
+              {item.contents.slice(0, 12).map((entry) => (
+                <li key={entry.relative}>
+                  <span className="folder-content-name">{entry.name}</span>
+                  <span className="folder-content-meta">
+                    {entry.extension ? entry.extension.toUpperCase() : "FILE"} ·{" "}
+                    {formatBytes(entry.size)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            {item.contents.length > 12 && (
+              <p className="folder-content-more">
+                还有 {item.contents.length - 12} 个文件，搜索结果中可直接按文件名查找
+              </p>
+            )}
+            <p className="folder-content-hint">
+              文件区仍只显示这个文件夹；在搜索栏输入内部文件名即可定位到它。
+            </p>
+          </section>
+        )}
+
         {(item.kind === "file" || item.kind === "folder") && (
           <section className="detail-section">
             <div className="detail-section-head">
@@ -274,6 +304,12 @@ export function DetailPanel({
               <div>
                 <dt>启动目标</dt>
                 <dd className="path-value">{item.target}</dd>
+              </div>
+            )}
+            {item.kind === "file" && item.source && (
+              <div>
+                <dt>位于</dt>
+                <dd>{item.source.replace(/^位于/, "").trim()}</dd>
               </div>
             )}
           </dl>

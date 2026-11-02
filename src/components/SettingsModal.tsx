@@ -27,8 +27,10 @@ interface SettingsModalProps {
   version: string;
   platform: string;
   theme: Theme;
+  autoStart: boolean;
   onClose: () => void;
   onThemeChange: (theme: Theme) => void;
+  onAutoStartChange: (enabled: boolean) => void;
   onZoneOpacityChange: (opacity: number) => void;
   onOpenFolder: (kind: "library" | "backups" | "data" | "shortcuts") => void;
   onOpenBackups: () => void;
@@ -46,8 +48,10 @@ export function SettingsModal({
   version,
   platform,
   theme,
+  autoStart,
   onClose,
   onThemeChange,
+  onAutoStartChange,
   onZoneOpacityChange,
   onOpenFolder,
   onOpenBackups,
@@ -218,6 +222,31 @@ export function SettingsModal({
           分区里的文件或软件直接点击即可打开；拖动分区标题移动位置，拖动右下角调整大小。
           全局快捷键 Ctrl + Shift + D 可快速显示或隐藏分区。
         </p>
+      </section>
+
+      <section className="settings-section">
+        <div className="settings-heading">
+          <h3>启动</h3>
+          <p>登录系统后自动运行 DeskNest。</p>
+        </div>
+        <div className="settings-toggle-row">
+          <div>
+            <strong>开机自启动</strong>
+            <small>
+              开启后会在登录时静默启动到系统托盘；移动安装目录或便携版位置后，下次启动会自动更新路径。
+            </small>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={autoStart}
+            className={`switch ${autoStart ? "on" : ""}`}
+            onClick={() => onAutoStartChange(!autoStart)}
+            aria-label="开机自启动"
+          >
+            <span />
+          </button>
+        </div>
       </section>
 
       <section className="settings-section">

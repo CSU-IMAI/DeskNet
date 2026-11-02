@@ -160,6 +160,7 @@ export default function App() {
     backupRetention: 10,
     backupInterval: "daily",
     backupOnChange: true,
+    autoStart: false,
   });
   const [desktop, setDesktop] = useState<DesktopSettings>({
     zones: [],
@@ -332,6 +333,54 @@ export default function App() {
       setRefreshing(false);
     }
   }, [showError]);
+
+  useEffect(() => {
+    const stopPromise = listen("items-changed", () => {
+      void api
+        .bootstrap()
+        .then((bootstrap) => {
+          setItems(bootstrap.items);
+          setCategories(bootstrap.categories);
+          setStorage(bootstrap.storage);
+          setSelectedId((current) =>
+            current && bootstrap.items.some((item) => item.id === current)
+              ? current
+              : null,
+          );
+        })
+        .catch(() => undefined);
+    });
+    return () => {
+      void stopPromise.then((stop) => stop());
+    };
+  }, []);
+
+  const scanLibrary = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const [nextItems, nextStorage] = await Promise.all([
+        api.refreshItems(),
+        api.storageInfo(),
+      ]);
+      setItems(nextItems);
+      setStorage(nextStorage);
+      setSelectedId((current) =>
+        current && nextItems.some((item) => item.id === current) ? current : null,
+      );
+      const folderCount = nextItems.filter(
+        (item) => item.kind === "folder" && item.contentCount > 0,
+      ).length;
+      notify(
+        "success",
+        "资料库索引已重建",
+        `已扫描 ${nextItems.length} 个保存项目，其中 ${folderCount} 个文件夹已建立内容索引`,
+      );
+    } catch (error) {
+      showError(error, "扫描资料库失败");
+    } finally {
+      setRefreshing(false);
+    }
+  }, [notify, showError]);
 
   const afterImport = useCallback(
     async (result: ImportResult, category?: Category | null) => {
@@ -617,8 +666,11 @@ export default function App() {
   }, [activeView.kind, baseItems, query, searchIndex, sort]);
 
   const selectedItem = useMemo(
-    () => items.find((item) => item.id === selectedId) ?? null,
-    [items, selectedId],
+    () =>
+      items.find((item) => item.id === selectedId) ??
+      visibleItems.find((item) => item.id === selectedId) ??
+      null,
+    [items, selectedId, visibleItems],
   );
 
   const currentCategory = useMemo(
@@ -1070,6 +1122,7 @@ export default function App() {
         backupRetention: retention,
         backupInterval: interval,
         backupOnChange,
+        autoStart: settings.autoStart,
       });
       try {
         const updated = await api.updateSettings(
@@ -1085,6 +1138,28 @@ export default function App() {
       }
     },
     [settings, showError],
+  );
+
+  const updateAutoStart = useCallback(
+    async (enabled: boolean) => {
+      const previous = settings;
+      setSettings((current) => ({ ...current, autoStart: enabled }));
+      try {
+        const updated = await api.setAutoStart(enabled);
+        setSettings(updated);
+        notify(
+          "success",
+          enabled ? "已开启开机自启动" : "已关闭开机自启动",
+          enabled
+            ? "下次登录 Windows 后会静默启动到系统托盘"
+            : "下次登录 Windows 时不会自动启动 DeskNest",
+        );
+      } catch (error) {
+        setSettings(previous);
+        showError(error, "更新开机自启动失败");
+      }
+    },
+    [settings, notify, showError],
   );
 
   const openFolder = useCallback(
@@ -1256,6 +1331,7 @@ export default function App() {
           onImportFiles={() => void handleImportFiles()}
           onImportDesktop={() => void handleImportDesktop()}
           onRefresh={() => void refresh()}
+          onScan={() => void scanLibrary()}
           onOpenBackups={() => void openBackups()}
           onOpenVault={openVaultModal}
           onToggleDesktopMode={() => void toggleDesktopMode()}
@@ -1519,8 +1595,10 @@ export default function App() {
           version={version}
           platform={platform}
           theme={theme}
+          autoStart={settings.autoStart}
           onClose={() => setSettingsOpen(false)}
           onThemeChange={setTheme}
+          onAutoStartChange={(enabled) => void updateAutoStart(enabled)}
           onZoneOpacityChange={handleZoneOpacityChange}
           onOpenFolder={(kind) => void openFolder(kind)}
           onOpenBackups={() => {

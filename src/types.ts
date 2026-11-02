@@ -1,5 +1,13 @@
 export type ItemKind = "file" | "folder" | "app";
 
+export interface FolderContent {
+  name: string;
+  relative: string;
+  extension: string;
+  size: number;
+  modified: number;
+}
+
 export interface Item {
   id: string;
   key: string;
@@ -19,6 +27,8 @@ export interface Item {
   encrypted: boolean;
   originalSize: number | null;
   icon: string | null;
+  contents: FolderContent[];
+  contentCount: number;
 }
 
 export interface Category {
@@ -33,6 +43,7 @@ export interface Settings {
   backupRetention: number;
   backupInterval: BackupInterval;
   backupOnChange: boolean;
+  autoStart: boolean;
 }
 
 export type BackupInterval = "manual" | "hourly" | "daily" | "weekly";

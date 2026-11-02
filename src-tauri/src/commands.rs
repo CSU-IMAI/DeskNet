@@ -459,14 +459,28 @@ pub fn update_settings(
             "hourly" | "daily" | "weekly" => backup_interval.clone(),
             _ => "manual".to_string(),
         };
+        let auto_start = state.settings.auto_start;
         state.settings = Settings {
             auto_backup,
             backup_retention: backup_retention.clamp(1, 100),
             backup_interval: interval,
             backup_on_change,
+            auto_start,
         };
         Ok(state.settings.clone())
     })
+}
+
+#[tauri::command]
+pub fn set_auto_start(app: AppHandle, enabled: bool) -> Result<Settings, String> {
+    let data = app.state::<AppData>();
+    crate::autostart::set_enabled(enabled)?;
+    let settings = data.mutate(|state| {
+        state.settings.auto_start = enabled;
+        Ok(state.settings.clone())
+    })?;
+    let _ = app.emit("items-changed", ());
+    Ok(settings)
 }
 
 #[tauri::command]

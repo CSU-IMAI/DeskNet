@@ -1,10 +1,38 @@
 import Fuse from "fuse.js";
-import type { Category, Item, SortKey } from "../types";
+import type { Category, FolderContent, Item, SortKey } from "../types";
 
 export interface SearchDocument extends Item {
   categoryText: string;
   categoryNames: string[];
+  contentText: string;
+  parentText: string;
   cleanExtension: string;
+}
+
+function folderContentItem(folder: Item, content: FolderContent): Item {
+  const separator = folder.path.includes("\\") ? "\\" : "/";
+  return {
+    id: `folderfile:${folder.key}/${content.relative}`,
+    key: `${folder.key}/${content.relative}`,
+    kind: "file",
+    name: content.name,
+    path: `${folder.path}${separator}${content.relative}`,
+    target: null,
+    extension: content.extension,
+    size: content.size,
+    modified: content.modified,
+    categories: folder.categories,
+    favorite: folder.favorite,
+    lastOpened: null,
+    missing: false,
+    source: `位于「${folder.name}」`,
+    createdAt: null,
+    encrypted: folder.encrypted,
+    originalSize: content.size,
+    icon: null,
+    contents: [],
+    contentCount: 0,
+  };
 }
 
 export function createSearchIndex(
@@ -12,23 +40,39 @@ export function createSearchIndex(
   categories: Category[],
 ): Fuse<SearchDocument> {
   const names = new Map(categories.map((category) => [category.id, category.name]));
-  const documents: SearchDocument[] = items.map((item) => {
+  const documents: SearchDocument[] = [];
+  const addDocument = (item: Item, parentText = "") => {
     const categoryNames = item.categories
       .map((id) => names.get(id))
       .filter((name): name is string => Boolean(name));
-    return {
+    documents.push({
       ...item,
       categoryNames,
       categoryText: categoryNames.join(" "),
+      contentText: item.contents.map((entry) => entry.name).join(" "),
+      parentText,
       cleanExtension: item.extension.replace(/^\./, ""),
-    };
-  });
+    });
+  };
+
+  for (const item of items) {
+    if (item.kind === "folder" && item.contents.length > 0) {
+      // The library keeps one folder card, but search must return concrete
+      // files so the user can open an individual target.
+      for (const content of item.contents) {
+        addDocument(folderContentItem(item, content), item.name);
+      }
+    } else {
+      addDocument(item);
+    }
+  }
   return new Fuse(documents, {
     keys: [
-      { name: "name", weight: 0.62 },
-      { name: "categoryText", weight: 0.16 },
-      { name: "target", weight: 0.12 },
-      { name: "cleanExtension", weight: 0.1 },
+      { name: "name", weight: 0.58 },
+      { name: "parentText", weight: 0.16 },
+      { name: "categoryText", weight: 0.12 },
+      { name: "target", weight: 0.08 },
+      { name: "cleanExtension", weight: 0.06 },
     ],
     threshold: 0.32,
     distance: 300,
@@ -56,6 +100,9 @@ export function searchItems(
       document.cleanExtension,
       document.target ?? "",
       document.categoryText,
+      document.contentText,
+      document.parentText,
+      document.source ?? "",
     ]
       .join(" ")
       .toLowerCase();
@@ -77,6 +124,9 @@ export function searchItems(
         document.cleanExtension,
         document.target ?? "",
         document.categoryText,
+        document.contentText,
+        document.parentText,
+        document.source ?? "",
       ]
         .join(" ")
         .toLowerCase();

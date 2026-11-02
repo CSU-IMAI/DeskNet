@@ -62,6 +62,7 @@ pub struct Settings {
     pub backup_retention: usize,
     pub backup_interval: String,
     pub backup_on_change: bool,
+    pub auto_start: bool,
 }
 
 impl Default for Settings {
@@ -71,6 +72,7 @@ impl Default for Settings {
             backup_retention: 10,
             backup_interval: "daily".to_string(),
             backup_on_change: true,
+            auto_start: false,
         }
     }
 }
@@ -229,6 +231,16 @@ pub enum ItemKind {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct FolderContent {
+    pub name: String,
+    pub relative: String,
+    pub extension: String,
+    pub size: u64,
+    pub modified: u64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Item {
     pub id: String,
     pub key: String,
@@ -248,6 +260,8 @@ pub struct Item {
     pub encrypted: bool,
     pub original_size: Option<u64>,
     pub icon: Option<String>,
+    pub contents: Vec<FolderContent>,
+    pub content_count: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Default)]

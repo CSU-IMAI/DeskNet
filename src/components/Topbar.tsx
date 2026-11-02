@@ -30,6 +30,7 @@ interface TopbarProps {
   onImportFiles: () => void;
   onImportDesktop: () => void;
   onRefresh: () => void;
+  onScan: () => void;
   onOpenBackups: () => void;
   onOpenVault: () => void;
   onToggleDesktopMode: () => void;
@@ -50,6 +51,7 @@ export function Topbar({
   onImportFiles,
   onImportDesktop,
   onRefresh,
+  onScan,
   onOpenBackups,
   onOpenVault,
   onToggleDesktopMode,
@@ -108,6 +110,16 @@ export function Topbar({
           <PanelsTopLeft size={15} strokeWidth={1.8} />
           <span>桌面模式</span>
           <i />
+        </button>
+        <button
+          type="button"
+          className="button button-quiet scan-index-button"
+          onClick={onScan}
+          disabled={loading}
+          title="重新扫描资料库，并重建文件夹内容索引"
+        >
+          <RefreshCw size={14} className={loading ? "spin" : ""} />
+          <span>扫描内容</span>
         </button>
         <button
           type="button"

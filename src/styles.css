@@ -889,6 +889,21 @@ code,
   box-shadow: 0 0 0 2px rgba(95, 127, 107, 0.14);
 }
 
+.scan-index-button {
+  gap: 6px;
+  height: 33px;
+  padding: 0 10px;
+  font-size: 10px;
+  color: var(--ink-soft);
+  background: var(--card);
+  border: 1px solid var(--line);
+}
+
+.scan-index-button:hover {
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+
 .spin {
   animation: spin 900ms linear infinite;
 }
@@ -1887,6 +1902,59 @@ code,
   margin: 0;
 }
 
+.folder-content-count {
+  font-size: 9px;
+  color: var(--muted);
+}
+
+.folder-content-list {
+  display: grid;
+  gap: 1px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--line);
+}
+
+.folder-content-list li {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  padding: 7px 9px;
+  background: var(--card);
+}
+
+.folder-content-name {
+  overflow: hidden;
+  font-size: 10px;
+  color: var(--ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folder-content-meta {
+  flex: 0 0 auto;
+  font-size: 8.5px;
+  color: var(--muted);
+}
+
+.folder-content-more,
+.folder-content-hint {
+  margin: 7px 0 0;
+  font-size: 8.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.folder-content-hint {
+  color: var(--sage);
+}
+
 .text-button {
   display: inline-flex;
   gap: 3px;
@@ -2823,6 +2891,32 @@ code,
 .settings-heading p {
   margin: 0;
   font-size: 9px;
+  color: var(--muted);
+}
+
+.settings-toggle-row {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 15px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.settings-toggle-row strong {
+  display: block;
+  font-size: 12px;
+  color: var(--ink);
+}
+
+.settings-toggle-row small {
+  display: block;
+  max-width: 430px;
+  margin-top: 3px;
+  font-size: 10px;
+  line-height: 1.55;
   color: var(--muted);
 }
 

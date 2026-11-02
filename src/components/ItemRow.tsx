@@ -93,7 +93,11 @@ export function ItemRow({
         )}
       </div>
       <span className="row-size">
-        {item.kind === "app" ? "软件" : formatBytes(item.size)}
+        {item.kind === "app"
+          ? "软件"
+          : item.kind === "folder"
+            ? `${item.contentCount} 个文件`
+            : formatBytes(item.size)}
       </span>
       <span className="row-date">{formatDate(item.modified)}</span>
       <div className="row-actions">

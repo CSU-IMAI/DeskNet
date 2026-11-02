@@ -1,4 +1,4 @@
-use crate::models::{AppRecord, AppState, Item, ItemKind, LaunchKind};
+use crate::models::{AppRecord, AppState, FolderContent, Item, ItemKind, LaunchKind};
 use crate::store::AppData;
 use crate::util::{
     extension_of, metadata_ms, path_string, relative_key,
@@ -60,6 +60,7 @@ fn scan_files(data: &AppData, state: &AppState, output: &mut Vec<Item>) {
             });
             let mut size = 0u64;
             let mut modified = metadata_ms(&metadata);
+            let mut contents = Vec::new();
             for child in walkdir::WalkDir::new(&path)
                 .follow_links(false)
                 .into_iter()
@@ -71,8 +72,28 @@ fn scan_files(data: &AppData, state: &AppState, output: &mut Vec<Item>) {
                 if let Ok(metadata) = child.metadata() {
                     size += metadata.len();
                     modified = modified.max(metadata_ms(&metadata));
+                    let relative = child
+                        .path()
+                        .strip_prefix(&path)
+                        .map(|value| value.to_string_lossy().replace('\\', "/"))
+                        .unwrap_or_default();
+                    let name = child.file_name().to_string_lossy().to_string();
+                    if relative.is_empty()
+                        || IGNORED_NAMES.contains(&name.to_lowercase().as_str())
+                    {
+                        continue;
+                    }
+                    contents.push(FolderContent {
+                        name,
+                        relative,
+                        extension: extension_of(&child.path().to_string_lossy()),
+                        size: metadata.len(),
+                        modified: metadata_ms(&metadata),
+                    });
                 }
             }
+            contents.sort_by(|left, right| left.relative.cmp(&right.relative));
+            let content_count = contents.len();
             output.push(Item {
                 id: format!("folder:{key}"),
                 key: key.clone(),
@@ -97,6 +118,8 @@ fn scan_files(data: &AppData, state: &AppState, output: &mut Vec<Item>) {
                 encrypted,
                 original_size: None,
                 icon: None,
+                contents,
+                content_count,
             });
             continue;
         }
@@ -133,6 +156,8 @@ fn scan_files(data: &AppData, state: &AppState, output: &mut Vec<Item>) {
             encrypted: encrypted_meta.is_some(),
             original_size: encrypted_meta.map(|meta| meta.original_size),
             icon: None,
+            contents: Vec::new(),
+            content_count: 0,
         });
     }
 }
@@ -209,10 +234,18 @@ fn app_item(data: &AppData, state: &AppState, app: &AppRecord) -> Item {
         encrypted: false,
         original_size: None,
         icon: crate::icons::data_url(data, app, &primary_path),
+        contents: Vec::new(),
+        content_count: 0,
     }
 }
 
 pub fn split_id(id: &str) -> Result<(ItemKind, String), String> {
+    if let Some(key) = id.strip_prefix("folderfile:") {
+        if key.is_empty() {
+            return Err("文件 id 不合法".to_string());
+        }
+        return Ok((ItemKind::File, key.to_string()));
+    }
     if let Some(key) = id.strip_prefix("file:") {
         return Ok((ItemKind::File, key.to_string()));
     }
@@ -232,10 +265,53 @@ pub fn split_id(id: &str) -> Result<(ItemKind, String), String> {
 }
 
 pub fn find_item(data: &AppData, id: &str) -> Result<Item, String> {
-    build_items(data)?
-        .into_iter()
-        .find(|item| item.id == id)
-        .ok_or_else(|| "项目不存在，可能已被移动或删除".to_string())
+    let items = build_items(data)?;
+    if let Some(item) = items.iter().find(|item| item.id == id) {
+        return Ok(item.clone());
+    }
+    let key = id
+        .strip_prefix("folderfile:")
+        .or_else(|| id.strip_prefix("file:"))
+        .ok_or_else(|| "项目不存在，可能已被移动或删除".to_string())?;
+    let (folder_key, relative) = key
+        .split_once('/')
+        .ok_or_else(|| "文件夹内容索引不存在".to_string())?;
+    let folder = items
+        .iter()
+        .find(|item| item.kind == ItemKind::Folder && item.key == folder_key)
+        .ok_or_else(|| "文件夹不存在".to_string())?;
+    let content = folder
+        .contents
+        .iter()
+        .find(|entry| entry.relative == relative)
+        .ok_or_else(|| "文件不存在，可能已被移动或删除".to_string())?;
+    Ok(folder_content_item(folder, content))
+}
+
+fn folder_content_item(folder: &Item, content: &FolderContent) -> Item {
+    let separator = if folder.path.contains('\\') { '\\' } else { '/' };
+    Item {
+        id: format!("folderfile:{}/{}", folder.key, content.relative),
+        key: format!("{}/{}", folder.key, content.relative),
+        kind: ItemKind::File,
+        name: content.name.clone(),
+        path: format!("{}{}{}", folder.path, separator, content.relative),
+        target: None,
+        extension: content.extension.clone(),
+        size: content.size,
+        modified: content.modified,
+        categories: folder.categories.clone(),
+        favorite: folder.favorite,
+        last_opened: None,
+        missing: false,
+        source: Some(format!("位于「{}」", folder.name)),
+        created_at: None,
+        encrypted: folder.encrypted,
+        original_size: Some(content.size),
+        icon: None,
+        contents: Vec::new(),
+        content_count: 0,
+    }
 }
 
 pub fn forget_key(state: &mut AppState, key: &str) {

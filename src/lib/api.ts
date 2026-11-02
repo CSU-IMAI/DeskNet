@@ -60,6 +60,8 @@ function fileItem(
     encrypted: false,
     originalSize: size,
     icon: null,
+    contents: [],
+    contentCount: 0,
   };
 }
 
@@ -91,6 +93,8 @@ function appItem(
     encrypted: false,
     originalSize: null,
     icon: null,
+    contents: [],
+    contentCount: 0,
   };
 }
 
@@ -151,6 +155,7 @@ let demoStore = {
     backupRetention: 10,
     backupInterval: "daily",
     backupOnChange: true,
+    autoStart: false,
   } as Settings,
   desktop: {
     zonesVisible: true,
@@ -367,7 +372,12 @@ const demoApi = {
       backupRetention,
       backupInterval,
       backupOnChange,
+      autoStart: demoStore.settings.autoStart,
     };
+    return { ...demoStore.settings };
+  },
+  async setAutoStart(enabled: boolean): Promise<Settings> {
+    demoStore.settings.autoStart = enabled;
     return { ...demoStore.settings };
   },
   async backupManifest(): Promise<BackupManifest> {
@@ -617,6 +627,10 @@ export const api = {
           backupInterval,
           backupOnChange,
         ),
+  setAutoStart: (enabled: boolean): Promise<Settings> =>
+    isDesktopRuntime
+      ? call<Settings>("set_auto_start", { enabled })
+      : demoApi.setAutoStart(enabled),
   backupManifest: (): Promise<BackupManifest> =>
     isDesktopRuntime
       ? call<BackupManifest>("backup_manifest")

@@ -35,7 +35,11 @@ export function ItemCard({
   const meta =
     item.kind === "app"
       ? item.source || "软件"
-      : `${formatBytes(item.size)} · ${formatDate(item.modified)}`;
+      : item.kind === "folder"
+        ? `${item.contentCount} 个文件 · ${formatBytes(item.size)}`
+        : item.source?.startsWith("位于")
+          ? `${item.source} · ${formatBytes(item.size)}`
+          : `${formatBytes(item.size)} · ${formatDate(item.modified)}`;
 
   const handleMenu = (event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();

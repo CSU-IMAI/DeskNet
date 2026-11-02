@@ -95,6 +95,11 @@ export function QuickSearch() {
     });
     void listen("items-changed", () => {
       dirtyRef.current = true;
+      void appWindow.isVisible().then((visible) => {
+        if (visible) {
+          void load();
+        }
+      });
     }).then((stop) => {
       unlistenChanged = stop;
     });
@@ -379,6 +384,10 @@ export function QuickSearch() {
                     {item.encrypted
                       ? "已加密 · 需要密码"
                       : typeLabel(item)}
+                    {item.kind === "folder" && item.contentCount > 0
+                      ? ` · 包含 ${item.contentCount} 个文件`
+                      : ""}
+                    {item.source ? ` · ${item.source}` : ""}
                     {item.categories[0]
                       ? ` · ${categoryName(item.categories[0], categories)}`
                       : ""}
